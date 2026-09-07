@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Livro-Razão — Gestão Financeira Mensal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#14181A;
+    --panel:#1B2124;
+    --panel-alt:#20272A;
+    --ink:#EDEAE2;
+    --muted:#8B9491;
+    --muted-2:#5E6764;
+    --line:#2B3336;
+    --line-soft:#252C2F;
+    --teal:#4FA98F;
+    --teal-dim:#3A7C69;
+    --gold:#E0A63A;
+    --red:#E2685A;
+    --green:#6FBF9A;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .num{ font-family:'Fraunces', serif; font-variant-numeric: tabular-nums; }
+  .mono{ font-family:'IBM Plex Mono', monospace; }
+  a{ color:var(--teal); }
+  button{ font-family:inherit; }
+  ::selection{ background:var(--teal-dim); color:#fff; }
+
+  #app{ display:flex; min-height:100vh; }
+
+  /* ---------- Sidebar ---------- */
+  .nav{
+    width:200px; flex-shrink:0;
+    background:var(--panel);
+    border-right:1px solid var(--line);
+    display:flex; flex-direction:column;
+    padding:20px 0;
+  }
+  .nav-brand{
+    padding:0 20px 20px 20px;
+    border-bottom:1px solid var(--line-soft);
+    margin-bottom:14px;
+  }
+  .nav-brand .mark{
+    font-family:'Fraunces', serif;
+    font-weight:600; font-size:19px; letter-spacing:0.2px;
+  }
+  .nav-brand .sub{
+    color:var(--muted); font-size:11.5px; margin-top:2px;
+  }
+  .nav-item{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 20px;
+    color:var(--muted);
+    cursor:pointer;
+    font-size:13.5px;
+    border-left:2px solid transparent;
+    transition:background .12s ease;
+  }
+  .nav-item:hover{ background:var(--panel-alt); color:var(--ink); }
+  .nav-item.active{
+    color:var(--ink); border-left:2px solid var(--teal);
+    background:var(--panel-alt);
+  }
+  .nav-item svg{ width:15px; height:15px; flex-shrink:0; opacity:.85; }
+  .nav-foot{
+    margin-top:auto; padding:14px 20px 0 20px;
+    border-top:1px solid var(--line-soft);
+    color:var(--muted-2); font-size:11px;
+  }
+
+  /* ---------- Main ---------- */
+  .main{ flex:1; min-width:0; display:flex; flex-direction:column; }
+
+  .statement-header{
+    padding:22px 32px 18px 32px;
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:18px;
+  }
+  .month-picker{ display:flex; align-items:center; gap:10px; }
+  .month-picker button{
+    width:26px; height:26px; border-radius:50%; border:1px solid var(--line);
+    background:transparent; color:var(--muted); cursor:pointer; font-size:14px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .month-picker button:hover{ border-color:var(--teal); color:var(--teal); }
+  .month-label{ font-family:'Fraunces', serif; font-size:20px; font-weight:500; text-transform:capitalize; min-width:150px; text-align:center; }
+
+  .kpi-row{ display:flex; gap:34px; }
+  .kpi{ text-align:right; }
+  .kpi .kpi-label{ color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:3px; }
+  .kpi .kpi-value{ font-size:22px; font-weight:500; }
+  .kpi.positive .kpi-value{ color:var(--green); }
+  .kpi.negative .kpi-value{ color:var(--red); }
+
+  .content{ padding:26px 32px 60px 32px; }
+  .content h2.section-title{
+    font-family:'Fraunces', serif; font-weight:500; font-size:17px; margin:0 0 14px 0;
+  }
+  .content .section-sub{ color:var(--muted); font-size:12.5px; margin-top:-10px; margin-bottom:16px; }
+
+  .grid-2{ display:grid; grid-template-columns:1.3fr 1fr; gap:20px; align-items:start; }
+  .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+  @media(max-width:900px){ .grid-2, .grid-3{ grid-template-columns:1fr; } .nav{ width:64px; } .nav-item span.label{display:none;} .nav-brand .sub, .nav-brand .mark{display:none;} .nav-brand{padding:0 10px 20px;} .nav-foot{display:none;} }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 20px;
+    margin-bottom:20px;
+  }
+  .panel-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:10px; flex-wrap:wrap; }
+  .panel-head h3{ font-family:'Fraunces', serif; font-weight:500; font-size:14.5px; margin:0; }
+  .panel-head .hint{ color:var(--muted); font-size:11.5px; }
+
+  table{ width:100%; border-collapse:collapse; }
+  th{
+    text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--muted); font-weight:500; padding:6px 8px; border-bottom:1px solid var(--line);
+  }
+  th.num-col, td.num-col{ text-align:right; }
+  td{ padding:8px 8px; border-bottom:1px solid var(--line-soft); font-size:13px; }
+  tr:last-child td{ border-bottom:none; }
+  tr.hoverable:hover{ background:var(--panel-alt); }
+  td.num, th.num{ font-family:'Fraunces', serif; font-variant-numeric: tabular-nums; }
+
+  .tag{
+    display:inline-block; padding:2px 8px; border-radius:20px; font-size:10.5px;
+    border:1px solid var(--line); color:var(--muted);
+  }
+  .row-actions{ display:flex; gap:6px; opacity:0; transition:opacity .1s; }
+  tr:hover .row-actions{ opacity:1; }
+  .icon-btn{
+    width:22px; height:22px; border-radius:3px; border:1px solid var(--line); background:transparent;
+    color:var(--muted); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-size:12px;
+  }
+  .icon-btn:hover{ border-color:var(--teal); color:var(--teal); }
+  .icon-btn.danger:hover{ border-color:var(--red); color:var(--red); }
+
+  .btn{
+    background:var(--teal); color:#0E1413; border:none; padding:8px 14px; border-radius:var(--radius);
+    font-size:12.5px; font-weight:600; cursor:pointer; letter-spacing:.01em;
+  }
+  .btn:hover{ background:#5EC0A3; }
+  .btn.secondary{ background:transparent; color:var(--ink); border:1px solid var(--line); font-weight:500; }
+  .btn.secondary:hover{ border-color:var(--teal); color:var(--teal); }
+  .btn.small{ padding:5px 10px; font-size:11.5px; }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .empty-state{
+    text-align:center; padding:40px 20px; color:var(--muted);
+  }
+  .empty-state p{ margin:0 0 14px 0; font-size:13px; }
+
+  /* Insight cards */
+  .insight{
+    border-left:2px solid var(--line); padding:10px 14px; margin-bottom:10px; background:var(--panel-alt); border-radius:0 var(--radius) var(--radius) 0;
+  }
+  .insight.oportunidade{ border-left-color:var(--gold); }
+  .insight.alerta{ border-left-color:var(--red); }
+  .insight.positivo{ border-left-color:var(--green); }
+  .insight .insight-kicker{ font-size:10px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:3px; }
+  .insight.oportunidade .insight-kicker{ color:var(--gold); }
+  .insight.alerta .insight-kicker{ color:var(--red); }
+  .insight.positivo .insight-kicker{ color:var(--green); }
+  .insight .insight-text{ font-size:13px; color:var(--ink); }
+
+  /* Progress bar (goals) */
+  .goal-card{ border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; margin-bottom:12px; }
+  .goal-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; gap:10px; }
+  .goal-name{ font-family:'Fraunces', serif; font-size:15px; }
+  .goal-date{ color:var(--muted); font-size:11.5px; }
+  .progress-track{ height:6px; background:var(--line); border-radius:4px; overflow:hidden; margin-bottom:8px; }
+  .progress-fill{ height:100%; background:var(--teal); }
+  .progress-fill.risk{ background:var(--gold); }
+  .progress-fill.off-track{ background:var(--red); }
+  .goal-meta{ display:flex; justify-content:space-between; font-size:12px; color:var(--muted); }
+  .goal-meta .val{ color:var(--ink); font-family:'Fraunces', serif; }
+
+  /* Forms / Modal */
+  .overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:100;
+    padding:20px;
+  }
+  .modal{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); width:100%; max-width:440px;
+    padding:22px 24px; max-height:88vh; overflow:auto;
+  }
+  .modal h3{ font-family:'Fraunces', serif; font-size:16px; margin:0 0 16px 0; font-weight:500; }
+  .field{ margin-bottom:13px; }
+  .field label{ display:block; font-size:11.5px; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:.04em; }
+  .field input, .field select, .field textarea{
+    width:100%; background:var(--bg); border:1px solid var(--line); color:var(--ink); border-radius:var(--radius);
+    padding:8px 10px; font-size:13.5px; font-family:inherit;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{ outline:none; border-color:var(--teal); }
+  .field-row{ display:flex; gap:10px; }
+  .field-row .field{ flex:1; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+
+  /* Assistant / chat */
+  .chat-wrap{ display:flex; flex-direction:column; height:calc(100vh - 190px); border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); }
+  .chat-log{ flex:1; overflow-y:auto; padding:18px 20px; display:flex; flex-direction:column; gap:14px; }
+  .msg{ max-width:78%; padding:10px 13px; border-radius:6px; font-size:13.5px; line-height:1.55; white-space:pre-wrap; }
+  .msg.user{ align-self:flex-end; background:var(--teal-dim); color:#F5FBF9; }
+  .msg.model{ align-self:flex-start; background:var(--panel-alt); border:1px solid var(--line); }
+  .msg.system-note{ align-self:center; color:var(--muted); font-size:11.5px; background:none; }
+  .chat-input-row{ border-top:1px solid var(--line); padding:12px 14px; display:flex; gap:10px; }
+  .chat-input-row textarea{
+    flex:1; background:var(--bg); border:1px solid var(--line); color:var(--ink); border-radius:var(--radius);
+    padding:9px 12px; font-size:13.5px; font-family:inherit; resize:none; height:42px;
+  }
+  .chat-input-row textarea:focus{ outline:none; border-color:var(--teal); }
+  .config-strip{
+    display:flex; gap:10px; align-items:center; padding:10px 14px; border-bottom:1px solid var(--line); flex-wrap:wrap;
+    background:var(--panel-alt);
+  }
+  .config-strip .field{ margin:0; flex:1; min-width:160px; }
+  .config-strip label{ font-size:10.5px; }
+  .typing-dots span{ display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--muted); margin-right:3px; animation:blink 1.2s infinite; }
+  .typing-dots span:nth-child(2){ animation-delay:.2s; } .typing-dots span:nth-child(3){ animation-delay:.4s; }
+  @keyframes blink{ 0%,80%,100%{opacity:.25;} 40%{opacity:1;} }
+
+  .chart-box{ position:relative; height:230px; }
+  .chart-box.tall{ height:290px; }
+
+  .subtabs{ display:flex; gap:4px; margin-bottom:16px; border-bottom:1px solid var(--line); }
+  .subtab{ padding:8px 14px; font-size:12.5px; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .subtab.active{ color:var(--ink); border-bottom-color:var(--teal); }
+</style>
+</head>
+<body>
+<div id="app">
+  <nav class="nav" id="nav"></nav>
+  <div class="main">
+    <div class="statement-header" id="statement-header"></div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+<div id="modal-root"></div>
+
+<script>
+/* =========================================================
+   DADOS / ESTADO
+   ========================================================= */
+const MESES_PT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const MESES_ABREV = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+const GRUPOS_PADRAO = [
+  { id:'custo_fixo',     nome:'Custo Fixo',     idealPercentual:0.40 },
+  { id:'investimentos',  nome:'Investimentos',  idealPercentual:0.10 },
+  { id:'conforto',       nome:'Conforto',       idealPercentual:0.15 },
+  { id:'metas',          nome:'Metas',          idealPercentual:0.15 },
+  { id:'prazeres',       nome:'Prazeres',       idealPercentual:0.15 },
+  { id:'educacao',       nome:'Educação',       idealPercentual:0.05 },
+];
+
+const CATEGORIAS_PADRAO = [
+  { id:cid(), nome:'Moradia / Condomínio',    grupoId:'custo_fixo',    planejadoPadrao:0 },
+  { id:cid(), nome:'Supermercado',            grupoId:'custo_fixo',    planejadoPadrao:0 },
+  { id:cid(), nome:'Cartões de crédito',      grupoId:'custo_fixo',    planejadoPadrao:0 },
+  { id:cid(), nome:'Plano de saúde',          grupoId:'custo_fixo',    planejadoPadrao:0 },
+  { id:cid(), nome:'Aporte de investimento',  grupoId:'investimentos', planejadoPadrao:0 },
+  { id:cid(), nome:'Streaming / Assinaturas', grupoId:'conforto',      planejadoPadrao:0 },
+  { id:cid(), nome:'Reserva para metas',      grupoId:'metas',         planejadoPadrao:0 },
+  { id:cid(), nome:'Lazer / Restaurantes',    grupoId:'prazeres',      planejadoPadrao:0 },
+  { id:cid(), nome:'Cursos / Escola',         grupoId:'educacao',      planejadoPadrao:0 },
+];
+
+let state = {
+  grupos: [],
+  categorias: [],
+  metas: [],
+  investimentos: [],
+  config: { geminiApiKey:'', geminiModel:'gemini-3.1-pro' },
+  chatMessages: [],
+  mesAtual: currentMonthKey(),
+  orcamentoCache: {},   // { 'YYYY-MM': {receitas:[], despesas:[]} }
+  mesesDisponiveis: [], // lista de YYYY-MM que já têm orçamento salvo
+  abaAtual: 'dashboard',
+  chartInstances: {},
+};
+
+function cid(){ return 'id_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+function currentMonthKey(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function monthLabel(key){ const [y,m]=key.split('-').map(Number); return MESES_PT[m-1]+' de '+y; }
+function shiftMonth(key, delta){ let [y,m]=key.split('-').map(Number); m+=delta; while(m<1){m+=12;y--;} while(m>12){m-=12;y++;} return y+'-'+String(m).padStart(2,'0'); }
+function fmtBRL(v){ v = Number(v)||0; return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function fmtPct(v, casas=1){ return (Number(v)*100).toFixed(casas).replace('.',',')+'%'; }
+function fmtDate(d){ if(!d) return ''; const dt = new Date(d+'T00:00:00'); return dt.toLocaleDateString('pt-BR'); }
+function monthsBetween(fromKey, toDateStr){
+  const [fy,fm] = fromKey.split('-').map(Number);
+  const to = new Date(toDateStr+'T00:00:00');
+  return (to.getFullYear()-fy)*12 + (to.getMonth()+1-fm);
+}
+
+/* =========================================================
+   STORAGE
+   ========================================================= */
+async function storageGet(key, fallback, shared=false){
+  try{
+    const r = await window.storage.get(key, shared);
+    return r ? JSON.parse(r.value) : fallback;
+  }catch(e){ return fallback; }
+}
+async function storageSet(key, value, shared=false){
+  try{
+    const r = await window.storage.set(key, JSON.stringify(value), shared);
+    return !!r;
+  }catch(e){ console.error('Falha ao salvar', key, e); return false; }
+}
+async function storageList(prefix, shared=false){
+  try{
+    const r = await window.storage.list(prefix, shared);
+    return r ? r.keys : [];
+  }catch(e){ return []; }
+}
+
+async function getOrcamentoMes(mesKey){
+  if(state.orcamentoCache[mesKey]) return state.orcamentoCache[mesKey];
+  const data = await storageGet('orcamento:'+mesKey, null);
+  state.orcamentoCache[mesKey] = data;
+  return data;
+}
+async function saveOrcamentoMes(mesKey, data){
+  state.orcamentoCache[mesKey] = data;
+  await storageSet('orcamento:'+mesKey, data);
+  if(!state.mesesDisponiveis.includes(mesKey)){
+    state.mesesDisponiveis.push(mesKey);
+    state.mesesDisponiveis.sort();
+  }
+}
+function seedOrcamentoVazio(){
+  return { receitas: [], despesas: state.categorias.map(c => ({ id:cid(), categoriaId:c.id, descricao:'', planejado:c.planejadoPadrao||0, realizado:0 })) };
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+async function init(){
+  const [grupos, categorias, metas, investimentos, config, chatMessages, mesesKeys] = await Promise.all([
+    storageGet('grupos', null),
+    storageGet('categorias', null),
+    storageGet('metas', []),
+    storageGet('investimentos', []),
+    storageGet('config', { geminiApiKey:'', geminiModel:'gemini-3.1-pro' }),
+    storageGet('chat:mensagens', []),
+    storageList('orcamento:'),
+  ]);
+
+  state.grupos = grupos || GRUPOS_PADRAO;
+  state.categorias = categorias || CATEGORIAS_PADRAO;
+  if(!grupos) await storageSet('grupos', state.grupos);
+  if(!categorias) await storageSet('categorias', state.categorias);
+
+  state.metas = metas;
+  state.investimentos = investimentos;
+  state.config = config;
+  state.chatMessages = chatMessages;
+  state.mesesDisponiveis = mesesKeys.map(k => k.replace('orcamento:','')).sort();
+
+  await getOrcamentoMes(state.mesAtual);
+
+  renderNav();
+  await renderAll();
+}
+
+/* =========================================================
+   NAV
+   ========================================================= */
+const NAV_ITEMS = [
+  { id:'dashboard', label:'Dashboard', icon:'M3 13h4v7H3v-7Zm7-7h4v14h-4V6Zm7 4h4v10h-4V10Z' },
+  { id:'orcamento', label:'Orçamento', icon:'M4 4h16v16H4V4Zm0 5h16M9 4v16' },
+  { id:'metas', label:'Metas', icon:'M12 2v6M12 2 8 6M12 2l4 4M4 14a8 8 0 1 0 16 0 8 8 0 0 0-16 0Zm8-3v3l2 2' },
+  { id:'investimentos', label:'Investimentos', icon:'M4 18 9 11l4 4 7-9M17 6h4v4' },
+  { id:'assistente', label:'Assistente IA', icon:'M12 3a6 6 0 0 0-6 6v3l-2 4h16l-2-4V9a6 6 0 0 0-6-6ZM9 20a3 3 0 0 0 6 0' },
+];
+function renderNav(){
+  const nav = document.getElementById('nav');
+  nav.innerHTML = `
+    <div class="nav-brand">
+      <div class="mark">Livro-Razão</div>
+      <div class="sub">Gestão financeira mensal</div>
+    </div>
+    ${NAV_ITEMS.map(it => `
+      <div class="nav-item ${state.abaAtual===it.id?'active':''}" data-nav="${it.id}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${it.icon}"/></svg>
+        <span class="label">${it.label}</span>
+      </div>`).join('')}
+    <div class="nav-foot">Dados salvos apenas<br>na sua conta.</div>
+  `;
+  nav.querySelectorAll('.nav-item').forEach(el => {
+    el.addEventListener('click', async () => {
+      state.abaAtual = el.dataset.nav;
+      renderNav();
+      await renderAll();
+    });
+  });
+}
+
+/* =========================================================
+   STATEMENT HEADER (mês + KPIs)
+   ========================================================= */
+async function computeResumoMes(mesKey){
+  const orc = await getOrcamentoMes(mesKey);
+  if(!orc) return { receita:0, despesa:0, saldo:0, porGrupo:{}, temDados:false };
+  const receita = orc.receitas.reduce((s,r)=>s+(Number(r.valor)||0),0);
+  const porGrupo = {};
+  state.grupos.forEach(g => porGrupo[g.id] = { planejado:0, realizado:0 });
+  let despesaTotal = 0;
+  orc.despesas.forEach(d => {
+    const cat = state.categorias.find(c=>c.id===d.categoriaId);
+    const gId = cat ? cat.grupoId : null;
+    const realizado = Number(d.realizado)||0;
+    const planejado = Number(d.planejado)||0;
+    despesaTotal += realizado;
+    if(gId && porGrupo[gId]){ porGrupo[gId].planejado += planejado; porGrupo[gId].realizado += realizado; }
+  });
+  return { receita, despesa:despesaTotal, saldo:receita-despesaTotal, porGrupo, temDados:true, orc };
+}
+
+async function renderStatementHeader(){
+  const el = document.getElementById('statement-header');
+  const resumo = await computeResumoMes(state.mesAtual);
+  el.innerHTML = `
+    <div class="month-picker">
+      <button id="mes-prev">‹</button>
+      <div class="month-label">${monthLabel(state.mesAtual)}</div>
+      <button id="mes-next">›</button>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Receita</div><div class="kpi-value num">${fmtBRL(resumo.receita)}</div></div>
+      <div class="kpi"><div class="kpi-label">Despesa</div><div class="kpi-value num">${fmtBRL(resumo.despesa)}</div></div>
+      <div class="kpi ${resumo.saldo>=0?'positive':'negative'}"><div class="kpi-label">Saldo</div><div class="kpi-value num">${fmtBRL(resumo.saldo)}</div></div>
+    </div>
+  `;
+  document.getElementById('mes-prev').onclick = async () => { state.mesAtual = shiftMonth(state.mesAtual,-1); await getOrcamentoMes(state.mesAtual); await renderAll(); };
+  document.getElementById('mes-next').onclick = async () => { state.mesAtual = shiftMonth(state.mesAtual,1); await getOrcamentoMes(state.mesAtual); await renderAll(); };
+}
+
+async function renderAll(){
+  await renderStatementHeader();
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="empty-state">Carregando…</div>';
+  if(state.abaAtual==='dashboard') await renderDashboard();
+  else if(state.abaAtual==='orcamento') await renderOrcamento();
+  else if(state.abaAtual==='metas') await renderMetas();
+  else if(state.abaAtual==='investimentos') await renderInvestimentos();
+  else if(state.abaAtual==='assistente') await renderAssistente();
+}
+
+/* =========================================================
+   DASHBOARD
+   ========================================================= */
+async function renderDashboard(){
+  const content = document.getElementById('content');
+  const resumo = await computeResumoMes(state.mesAtual);
+
+  if(!resumo.temDados){
+    content.innerHTML = `
+      <div class="panel">
+        <div class="empty-state">
+          <p>Ainda não há orçamento cadastrado para ${monthLabel(state.mesAtual)}.</p>
+          <button class="btn" id="ir-orcamento">Cadastrar orçamento deste mês</button>
+        </div>
+      </div>`;
+    document.getElementById('ir-orcamento').onclick = async () => { state.abaAtual='orcamento'; renderNav(); await renderAll(); };
+    return;
+  }
+
+  const insights = await computeInsights(state.mesAtual, resumo);
+  const historico = await getHistoricoMeses(6);
+
+  content.innerHTML = `
+    <div class="grid-2">
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h3>Planejado × Realizado por grupo</h3><span class="hint">${monthLabel(state.mesAtual)}</span></div>
+          <div class="chart-box"><canvas id="chart-planrealizado"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Receita, despesa e saldo — últimos meses</h3></div>
+          <div class="chart-box"><canvas id="chart-tendencia"></canvas></div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h3>Alocação ideal × praticada</h3><span class="hint">% da receita</span></div>
+          <div class="chart-box"><canvas id="chart-alocacao"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Oportunidades de melhoria</h3></div>
+          ${insights.length ? insights.map(renderInsightHtml).join('') : '<div class="empty-state" style="padding:10px 0;">Nenhum ponto de atenção identificado neste mês.</div>'}
+        </div>
+      </div>
+    </div>
+  `;
+
+  destroyChart('chart-planrealizado');
+  destroyChart('chart-alocacao');
+  destroyChart('chart-tendencia');
+
+  const grupoLabels = state.grupos.map(g=>g.nome);
+  state.chartInstances['chart-planrealizado'] = new Chart(document.getElementById('chart-planrealizado'), {
+    type:'bar',
+    data:{ labels:grupoLabels, datasets:[
+      { label:'Planejado', data: state.grupos.map(g=>resumo.porGrupo[g.id]?.planejado||0), backgroundColor:'#3A424A' },
+      { label:'Realizado', data: state.grupos.map(g=>resumo.porGrupo[g.id]?.realizado||0), backgroundColor:'#4FA98F' },
+    ]},
+    options: chartOptionsBar(),
+  });
+
+  state.chartInstances['chart-alocacao'] = new Chart(document.getElementById('chart-alocacao'), {
+    type:'bar',
+    data:{ labels:grupoLabels, datasets:[
+      { label:'Ideal', data: state.grupos.map(g=>+(g.idealPercentual*100).toFixed(1)), backgroundColor:'#3A424A' },
+      { label:'Praticado', data: state.grupos.map(g=> resumo.receita>0 ? +(((resumo.porGrupo[g.id]?.realizado||0)/resumo.receita)*100).toFixed(1) : 0), backgroundColor:'#E0A63A' },
+    ]},
+    options: chartOptionsBar(v => v+'%'),
+  });
+
+  state.chartInstances['chart-tendencia'] = new Chart(document.getElementById('chart-tendencia'), {
+    type:'line',
+    data:{ labels: historico.map(h=>MESES_ABREV[Number(h.mes.split('-')[1])-1]+'/'+h.mes.split('-')[0].slice(2)),
+      datasets:[
+        { label:'Receita', data:historico.map(h=>h.receita), borderColor:'#8B9491', backgroundColor:'transparent', tension:.3 },
+        { label:'Despesa', data:historico.map(h=>h.despesa), borderColor:'#E2685A', backgroundColor:'transparent', tension:.3 },
+        { label:'Saldo', data:historico.map(h=>h.saldo), borderColor:'#4FA98F', backgroundColor:'transparent', tension:.3 },
+      ]},
+    options: chartOptionsLine(),
+  });
+}
+
+function renderInsightHtml(ins){
+  return `<div class="insight ${ins.tipo}"><div class="insight-kicker">${ins.tipo==='oportunidade'?'Oportunidade':ins.tipo==='alerta'?'Alerta':'Ponto positivo'}</div><div class="insight-text">${ins.texto}</div></div>`;
+}
+
+async function getHistoricoMeses(n){
+  const out = [];
+  let mes = state.mesAtual;
+  const keys = [];
+  for(let i=n-1;i>=0;i--) keys.push(shiftMonth(mes,-i));
+  for(const k of keys){
+    const r = await computeResumoMes(k);
+    out.push({ mes:k, receita:r.receita, despesa:r.despesa, saldo:r.saldo });
+  }
+  return out;
+}
+
+async function computeInsights(mesKey, resumo){
+  const insights = [];
+  const receita = resumo.receita;
+  if(receita<=0) return insights;
+
+  state.grupos.forEach(g => {
+    const realizado = resumo.porGrupo[g.id]?.realizado || 0;
+    const praticado = realizado/receita;
+    const diff = praticado - g.idealPercentual;
+    if(g.id==='investimentos' && diff < -0.02){
+      const faltante = (g.idealPercentual-praticado)*receita;
+      insights.push({ tipo:'oportunidade', texto:`Investimentos ficaram em ${fmtPct(praticado)} da receita, abaixo da meta de ${fmtPct(g.idealPercentual)}. Um aporte adicional de ${fmtBRL(faltante)} alcançaria o ideal.` });
+    } else if(diff > 0.03 && g.id!=='investimentos'){
+      const severidade = diff>0.06 ? 'alerta' : 'oportunidade';
+      insights.push({ tipo:severidade, texto:`${g.nome} consumiu ${fmtPct(praticado)} da receita, ${fmtPct(diff)} acima do ideal (${fmtPct(g.idealPercentual)}).` });
+    }
+  });
+
+  if(resumo.saldo<0){
+    insights.push({ tipo:'alerta', texto:`O mês fechou com saldo negativo de ${fmtBRL(Math.abs(resumo.saldo))}.` });
+  } else {
+    const taxaPoupanca = resumo.saldo/receita;
+    if(taxaPoupanca < 0.10){
+      insights.push({ tipo:'oportunidade', texto:`A taxa de poupança do mês foi de ${fmtPct(taxaPoupanca)} da receita. Reduzir gastos nos grupos acima do ideal ajudaria a elevar essa margem.` });
+    } else if(taxaPoupanca > 0.20){
+      insights.push({ tipo:'positivo', texto:`Boa margem no mês: ${fmtPct(taxaPoupanca)} da receita ficou como saldo positivo.` });
+    }
+  }
+
+  if(resumo.orc){
+    resumo.orc.despesas.forEach(d => {
+      const planejado = Number(d.planejado)||0, realizado = Number(d.realizado)||0;
+      if(planejado>0 && realizado > planejado*1.15){
+        const cat = state.categorias.find(c=>c.id===d.categoriaId);
+        insights.push({ tipo:'alerta', texto:`${cat?cat.nome:'Categoria'} estourou o planejado em ${fmtPct((realizado-planejado)/planejado)} (${fmtBRL(realizado)} vs ${fmtBRL(planejado)} planejados).` });
+      }
+    });
+  }
+
+  const hoje = new Date().toISOString().slice(0,10);
+  state.metas.forEach(m => {
+    const hist = m.historico||[];
+    if(hist.length<2) return;
+    const primeiro = hist[0], ultimo = hist[hist.length-1];
+    const mesesDecorridos = Math.max(1, monthsBetween(primeiro.data.slice(0,7), ultimo.data));
+    const ritmoAtual = (ultimo.valor-primeiro.valor)/mesesDecorridos;
+    const mesesRestantes = Math.max(1, monthsBetween(mesKey, m.dataAlvo));
+    const faltante = m.valorAlvo - ultimo.valor;
+    const ritmoNecessario = faltante/mesesRestantes;
+    if(faltante>0 && ritmoAtual < ritmoNecessario*0.9){
+      insights.push({ tipo:'alerta', texto:`Meta "${m.nome}": no ritmo atual (${fmtBRL(ritmoAtual)}/mês) o valor necessário (${fmtBRL(ritmoNecessario)}/mês) não será atingido até ${fmtDate(m.dataAlvo)}.` });
+    }
+  });
+
+  return insights;
+}
+
+function destroyChart(id){ if(state.chartInstances[id]){ state.chartInstances[id].destroy(); delete state.chartInstances[id]; } }
+function chartOptionsBar(tickFmt){
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ labels:{ color:'#8B9491', font:{ family:'IBM Plex Sans', size:11 } } } },
+    scales:{
+      x:{ ticks:{ color:'#8B9491', font:{ size:10.5 } }, grid:{ display:false } },
+      y:{ ticks:{ color:'#8B9491', font:{ size:10.5 }, callback:v=>tickFmt?tickFmt(v):v }, grid:{ color:'#252C2F' } },
+    }
+  };
+}
+function chartOptionsLine(){
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ labels:{ color:'#8B9491', font:{ family:'IBM Plex Sans', size:11 } } } },
+    scales:{
+      x:{ ticks:{ color:'#8B9491', font:{ size:10.5 } }, grid:{ display:false } },
+      y:{ ticks:{ color:'#8B9491', font:{ size:10.5 } }, grid:{ color:'#252C2F' } },
+    }
+  };
+}
+
+/* =========================================================
+   ORÇAMENTO
+   ========================================================= */
+async function renderOrcamento(){
+  const content = document.getElementById('content');
+  let orc = await getOrcamentoMes(state.mesAtual);
+
+  if(!orc){
+    content.innerHTML = `
+      <div class="panel">
+        <div class="empty-state">
+          <p>Nenhum orçamento cadastrado para ${monthLabel(state.mesAtual)} ainda.</p>
+          <button class="btn" id="criar-orc">Criar orçamento para este mês</button>
+        </div>
+      </div>`;
+    document.getElementById('criar-orc').onclick = async () => {
+      const seed = seedOrcamentoVazio();
+      await saveOrcamentoMes(state.mesAtual, seed);
+      await renderOrcamento();
+    };
+    return;
+  }
+
+  const totalReceita = orc.receitas.reduce((s,r)=>s+(Number(r.valor)||0),0);
+  const totalPlanejado = orc.despesas.reduce((s,d)=>s+(Number(d.planejado)||0),0);
+  const totalRealizado = orc.despesas.reduce((s,d)=>s+(Number(d.realizado)||0),0);
+
+  content.innerHTML = `
+    <div class="grid-2">
+      <div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Receitas</h3>
+            <button class="btn small" id="add-receita">+ Fonte de receita</button>
+          </div>
+          <table>
+            <thead><tr><th>Fonte</th><th class="num-col">Valor</th><th></th></tr></thead>
+            <tbody id="tbody-receitas"></tbody>
+          </table>
+          <div style="text-align:right; margin-top:10px; font-size:12.5px; color:var(--muted);">Total: <span class="num" style="color:var(--ink); font-size:14px;">${fmtBRL(totalReceita)}</span></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Despesas por categoria</h3>
+            <button class="btn small" id="add-despesa">+ Lançamento</button>
+          </div>
+          <table>
+            <thead><tr><th>Categoria</th><th>Grupo</th><th class="num-col">Planejado</th><th class="num-col">Realizado</th><th></th></tr></thead>
+            <tbody id="tbody-despesas"></tbody>
+          </table>
+          <div style="text-align:right; margin-top:10px; font-size:12.5px; color:var(--muted);">
+            Planejado: <span class="num" style="color:var(--ink);">${fmtBRL(totalPlanejado)}</span> &nbsp;·&nbsp;
+            Realizado: <span class="num" style="color:var(--ink);">${fmtBRL(totalRealizado)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Categorias e grupos ideais</h3>
+            <button class="btn small secondary" id="add-categoria">+ Categoria</button>
+          </div>
+          <div class="section-sub">O percentual ideal é aplicado sobre a receita do mês para calcular as oportunidades no dashboard.</div>
+          <table>
+            <thead><tr><th>Grupo</th><th class="num-col">% ideal</th><th></th></tr></thead>
+            <tbody id="tbody-grupos"></tbody>
+          </table>
+          <div id="soma-ideal" style="margin-top:8px; font-size:11.5px; color:var(--muted);"></div>
+          <div style="margin-top:14px;">
+            <table>
+              <thead><tr><th>Categoria</th><th>Grupo</th><th></th></tr></thead>
+              <tbody id="tbody-categorias"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const tbR = document.getElementById('tbody-receitas');
+  tbR.innerHTML = orc.receitas.length ? orc.receitas.map(r=>`
+    <tr class="hoverable">
+      <td>${escapeHtml(r.fonte)}</td>
+      <td class="num-col num">${fmtBRL(r.valor)}</td>
+      <td><div class="row-actions"><button class="icon-btn" data-edit-receita="${r.id}">✎</button><button class="icon-btn danger" data-del-receita="${r.id}">✕</button></div></td>
+    </tr>`).join('') : `<tr><td colspan="3" style="color:var(--muted);">Nenhuma receita cadastrada ainda.</td></tr>`;
+
+  const tbD = document.getElementById('tbody-despesas');
+  tbD.innerHTML = orc.despesas.length ? orc.despesas.map(d=>{
+    const cat = state.categorias.find(c=>c.id===d.categoriaId);
+    const grupo = cat ? state.grupos.find(g=>g.id===cat.grupoId) : null;
+    const over = d.planejado>0 && d.realizado > d.planejado*1.15;
+    return `<tr class="hoverable">
+      <td>${cat?escapeHtml(cat.nome):'—'}${d.descricao?`<div style="color:var(--muted); font-size:11px;">${escapeHtml(d.descricao)}</div>`:''}</td>
+      <td><span class="tag">${grupo?grupo.nome:'—'}</span></td>
+      <td class="num-col num">${fmtBRL(d.planejado)}</td>
+      <td class="num-col num" style="${over?'color:var(--red);':''}">${fmtBRL(d.realizado)}</td>
+      <td><div class="row-actions"><button class="icon-btn" data-edit-despesa="${d.id}">✎</button><button class="icon-btn danger" data-del-despesa="${d.id}">✕</button></div></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="5" style="color:var(--muted);">Nenhuma despesa lançada ainda.</td></tr>`;
+
+  const tbG = document.getElementById('tbody-grupos');
+  tbG.innerHTML = state.grupos.map(g=>`
+    <tr class="hoverable">
+      <td>${escapeHtml(g.nome)}</td>
+      <td class="num-col"><input type="number" step="0.5" min="0" max="100" value="${(g.idealPercentual*100).toFixed(1)}" data-grupo-pct="${g.id}" style="width:64px; background:var(--bg); border:1px solid var(--line); color:var(--ink); border-radius:3px; padding:4px 6px; text-align:right;">%</td>
+      <td></td>
+    </tr>`).join('');
+  const somaIdeal = state.grupos.reduce((s,g)=>s+g.idealPercentual,0);
+  document.getElementById('soma-ideal').textContent = `Soma dos grupos: ${fmtPct(somaIdeal)}` + (Math.abs(somaIdeal-1)>0.01 ? ' — o ideal é somar 100% da receita.' : '');
+
+  const tbC = document.getElementById('tbody-categorias');
+  tbC.innerHTML = state.categorias.map(c=>{
+    const g = state.grupos.find(g=>g.id===c.grupoId);
+    return `<tr class="hoverable">
+      <td>${escapeHtml(c.nome)}</td>
+      <td><span class="tag">${g?g.nome:'—'}</span></td>
+      <td><div class="row-actions"><button class="icon-btn" data-edit-categoria="${c.id}">✎</button><button class="icon-btn danger" data-del-categoria="${c.id}">✕</button></div></td>
+    </tr>`;
+  }).join('');
+
+  // --- eventos ---
+  document.getElementById('add-receita').onclick = () => openReceitaModal(null);
+  tbR.querySelectorAll('[data-edit-receita]').forEach(b=>b.onclick=()=>openReceitaModal(b.dataset.editReceita));
+  tbR.querySelectorAll('[data-del-receita]').forEach(b=>b.onclick=async()=>{
+    orc.receitas = orc.receitas.filter(r=>r.id!==b.dataset.delReceita);
+    await saveOrcamentoMes(state.mesAtual, orc); await renderAll();
+  });
+
+  document.getElementById('add-despesa').onclick = () => openDespesaModal(null);
+  tbD.querySelectorAll('[data-edit-despesa]').forEach(b=>b.onclick=()=>openDespesaModal(b.dataset.editDespesa));
+  tbD.querySelectorAll('[data-del-despesa]').forEach(b=>b.onclick=async()=>{
+    orc.despesas = orc.despesas.filter(d=>d.id!==b.dataset.delDespesa);
+    await saveOrcamentoMes(state.mesAtual, orc); await renderAll();
+  });
+
+  tbG.querySelectorAll('[data-grupo-pct]').forEach(inp=>{
+    inp.onchange = async () => {
+      const g = state.grupos.find(g=>g.id===inp.dataset.grupoPct);
+      g.idealPercentual = (Number(inp.value)||0)/100;
+      await storageSet('grupos', state.grupos);
+      await renderAll();
+    };
+  });
+
+  document.getElementById('add-categoria').onclick = () => openCategoriaModal(null);
+  tbC.querySelectorAll('[data-edit-categoria]').forEach(b=>b.onclick=()=>openCategoriaModal(b.dataset.editCategoria));
+  tbC.querySelectorAll('[data-del-categoria]').forEach(b=>b.onclick=async()=>{
+    state.categorias = state.categorias.filter(c=>c.id!==b.dataset.delCategoria);
+    await storageSet('categorias', state.categorias);
+    await renderOrcamento();
+  });
+}
+
+function openReceitaModal(id){
+  const orc = state.orcamentoCache[state.mesAtual];
+  const existing = id ? orc.receitas.find(r=>r.id===id) : null;
+  openModal(existing?'Editar receita':'Nova fonte de receita', `
+    <div class="field"><label>Fonte</label><input type="text" id="f-fonte" value="${existing?escapeAttr(existing.fonte):''}" placeholder="Ex.: Salário, Freelance..."></div>
+    <div class="field"><label>Valor (R$)</label><input type="number" step="0.01" id="f-valor" value="${existing?existing.valor:''}"></div>
+  `, async () => {
+    const fonte = document.getElementById('f-fonte').value.trim();
+    const valor = Number(document.getElementById('f-valor').value)||0;
+    if(!fonte) return false;
+    if(existing){ existing.fonte=fonte; existing.valor=valor; }
+    else orc.receitas.push({ id:cid(), fonte, valor });
+    await saveOrcamentoMes(state.mesAtual, orc);
+    await renderAll();
+    return true;
+  }, existing ? { onDelete: async () => { orc.receitas = orc.receitas.filter(r=>r.id!==id); await saveOrcamentoMes(state.mesAtual,orc); await renderAll(); } } : null);
+}
+
+function openDespesaModal(id){
+  const orc = state.orcamentoCache[state.mesAtual];
+  const existing = id ? orc.despesas.find(d=>d.id===id) : null;
+  const catOptions = state.categorias.map(c=>`<option value="${c.id}" ${existing&&existing.categoriaId===c.id?'selected':''}>${escapeHtml(c.nome)}</option>`).join('');
+  openModal(existing?'Editar lançamento':'Novo lançamento de despesa', `
+    <div class="field"><label>Categoria</label><select id="f-cat">${catOptions || '<option value="">Cadastre uma categoria primeiro</option>'}</select></div>
+    <div class="field"><label>Descrição (opcional)</label><input type="text" id="f-desc" value="${existing?escapeAttr(existing.descricao||''):''}" placeholder="Ex.: Cartão Bradesco"></div>
+    <div class="field-row">
+      <div class="field"><label>Planejado (R$)</label><input type="number" step="0.01" id="f-plan" value="${existing?existing.planejado:0}"></div>
+      <div class="field"><label>Realizado (R$)</label><input type="number" step="0.01" id="f-real" value="${existing?existing.realizado:0}"></div>
+    </div>
+  `, async () => {
+    const categoriaId = document.getElementById('f-cat').value;
+    if(!categoriaId) return false;
+    const descricao = document.getElementById('f-desc').value.trim();
+    const planejado = Number(document.getElementById('f-plan').value)||0;
+    const realizado = Number(document.getElementById('f-real').value)||0;
+    if(existing){ Object.assign(existing, {categoriaId, descricao, planejado, realizado}); }
+    else orc.despesas.push({ id:cid(), categoriaId, descricao, planejado, realizado });
+    await saveOrcamentoMes(state.mesAtual, orc);
+    await renderAll();
+    return true;
+  }, existing ? { onDelete: async () => { orc.despesas = orc.despesas.filter(d=>d.id!==id); await saveOrcamentoMes(state.mesAtual,orc); await renderAll(); } } : null);
+}
+
+function openCategoriaModal(id){
+  const existing = id ? state.categorias.find(c=>c.id===id) : null;
+  const grupoOptions = state.grupos.map(g=>`<option value="${g.id}" ${existing&&existing.grupoId===g.id?'selected':''}>${escapeHtml(g.nome)}</option>`).join('');
+  openModal(existing?'Editar categoria':'Nova categoria', `
+    <div class="field"><label>Nome</label><input type="text" id="f-nome" value="${existing?escapeAttr(existing.nome):''}"></div>
+    <div class="field"><label>Grupo</label><select id="f-grupo">${grupoOptions}</select></div>
+    <div class="field"><label>Planejado padrão para novos meses (R$)</label><input type="number" step="0.01" id="f-pad" value="${existing?existing.planejadoPadrao||0:0}"></div>
+  `, async () => {
+    const nome = document.getElementById('f-nome').value.trim();
+    if(!nome) return false;
+    const grupoId = document.getElementById('f-grupo').value;
+    const planejadoPadrao = Number(document.getElementById('f-pad').value)||0;
+    if(existing){ Object.assign(existing, {nome, grupoId, planejadoPadrao}); }
+    else state.categorias.push({ id:cid(), nome, grupoId, planejadoPadrao });
+    await storageSet('categorias', state.categorias);
+    await renderOrcamento();
+    return true;
+  }, existing ? { onDelete: async () => { state.categorias = state.categorias.filter(c=>c.id!==id); await storageSet('categorias', state.categorias); await renderOrcamento(); } } : null);
+}
+
+/* =========================================================
+   METAS
+   ========================================================= */
+async function renderMetas(){
+  const content = document.getElementById('content');
+  content.innerHTML = `
+    <div class="panel-head" style="margin-bottom:16px;">
+      <h2 class="section-title" style="margin:0;">Metas financeiras</h2>
+      <button class="btn" id="add-meta">+ Nova meta</button>
+    </div>
+    <div id="metas-list"></div>
+  `;
+  document.getElementById('add-meta').onclick = () => openMetaModal(null);
+
+  const list = document.getElementById('metas-list');
+  if(!state.metas.length){
+    list.innerHTML = `<div class="panel"><div class="empty-state"><p>Nenhuma meta cadastrada ainda. Cadastre um valor-alvo e uma data para acompanhar o progresso.</p></div></div>`;
+    return;
+  }
+
+  const hoje = new Date().toISOString().slice(0,10);
+  list.innerHTML = state.metas.map(m => {
+    const hist = m.historico||[];
+    const valorAtual = hist.length ? hist[hist.length-1].valor : 0;
+    const progresso = m.valorAlvo>0 ? Math.min(1, valorAtual/m.valorAlvo) : 0;
+    const mesesRestantes = monthsBetween(state.mesAtual, m.dataAlvo);
+    let ritmoStatus = '';
+    let barClass = '';
+    if(hist.length>=2){
+      const primeiro = hist[0], ultimo = hist[hist.length-1];
+      const mesesDecorridos = Math.max(1, monthsBetween(primeiro.data.slice(0,7), ultimo.data));
+      const ritmoAtual = (ultimo.valor-primeiro.valor)/mesesDecorridos;
+      const faltante = m.valorAlvo - valorAtual;
+      const ritmoNecessario = mesesRestantes>0 ? faltante/mesesRestantes : faltante;
+      if(faltante<=0){ ritmoStatus = 'Meta atingida.'; }
+      else if(mesesRestantes<=0){ ritmoStatus = 'Prazo já vencido.'; barClass='off-track'; }
+      else if(ritmoAtual < ritmoNecessario*0.9){ ritmoStatus = `Ritmo atual ${fmtBRL(ritmoAtual)}/mês; seriam necessários ${fmtBRL(ritmoNecessario)}/mês.`; barClass='risk'; }
+      else { ritmoStatus = `No ritmo — ${fmtBRL(ritmoAtual)}/mês.`; }
+    } else {
+      ritmoStatus = 'Atualize o valor atual ao longo dos meses para acompanhar o ritmo.';
+    }
+    return `
+      <div class="goal-card">
+        <div class="goal-top">
+          <div class="goal-name">${escapeHtml(m.nome)}</div>
+          <div class="goal-date">até ${fmtDate(m.dataAlvo)}</div>
+        </div>
+        <div class="progress-track"><div class="progress-fill ${barClass}" style="width:${(progresso*100).toFixed(1)}%"></div></div>
+        <div class="goal-meta">
+          <span><span class="val num">${fmtBRL(valorAtual)}</span> de <span class="val num">${fmtBRL(m.valorAlvo)}</span> (${fmtPct(progresso)})</span>
+          <span>${ritmoStatus}</span>
+        </div>
+        <div class="row-actions" style="opacity:1; margin-top:10px; justify-content:flex-end;">
+          <button class="btn small secondary" data-update-meta="${m.id}">Atualizar valor</button>
+          <button class="icon-btn" data-edit-meta="${m.id}">✎</button>
+          <button class="icon-btn danger" data-del-meta="${m.id}">✕</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-update-meta]').forEach(b=>b.onclick=()=>openAtualizarMetaModal(b.dataset.updateMeta));
+  list.querySelectorAll('[data-edit-meta]').forEach(b=>b.onclick=()=>openMetaModal(b.dataset.editMeta));
+  list.querySelectorAll('[data-del-meta]').forEach(b=>b.onclick=async()=>{
+    state.metas = state.metas.filter(m=>m.id!==b.dataset.delMeta);
+    await storageSet('metas', state.metas);
+    await renderMetas();
+  });
+}
+
+function openMetaModal(id){
+  const existing = id ? state.metas.find(m=>m.id===id) : null;
+  openModal(existing?'Editar meta':'Nova meta financeira', `
+    <div class="field"><label>Nome da meta</label><input type="text" id="f-nome" value="${existing?escapeAttr(existing.nome):''}" placeholder="Ex.: Reserva de emergência"></div>
+    <div class="field-row">
+      <div class="field"><label>Valor alvo (R$)</label><input type="number" step="0.01" id="f-alvo" value="${existing?existing.valorAlvo:''}"></div>
+      <div class="field"><label>Data alvo</label><input type="date" id="f-data" value="${existing?existing.dataAlvo:''}"></div>
+    </div>
+    ${!existing ? `<div class="field"><label>Valor atual (R$)</label><input type="number" step="0.01" id="f-atual" value="0"></div>` : ''}
+  `, async () => {
+    const nome = document.getElementById('f-nome').value.trim();
+    const valorAlvo = Number(document.getElementById('f-alvo').value)||0;
+    const dataAlvo = document.getElementById('f-data').value;
+    if(!nome || !valorAlvo || !dataAlvo) return false;
+    if(existing){ existing.nome=nome; existing.valorAlvo=valorAlvo; existing.dataAlvo=dataAlvo; }
+    else {
+      const valorAtual = Number(document.getElementById('f-atual').value)||0;
+      state.metas.push({ id:cid(), nome, valorAlvo, dataAlvo, criadoEm:new Date().toISOString().slice(0,10), historico:[{data:new Date().toISOString().slice(0,10), valor:valorAtual}] });
+    }
+    await storageSet('metas', state.metas);
+    await renderMetas();
+    return true;
+  }, existing ? { onDelete: async () => { state.metas = state.metas.filter(m=>m.id!==id); await storageSet('metas', state.metas); await renderMetas(); } } : null);
+}
+
+function openAtualizarMetaModal(id){
+  const meta = state.metas.find(m=>m.id===id);
+  const hist = meta.historico||[];
+  const atual = hist.length ? hist[hist.length-1].valor : 0;
+  openModal('Atualizar valor acumulado', `
+    <div class="field"><label>Valor atual (R$)</label><input type="number" step="0.01" id="f-valor" value="${atual}"></div>
+    <div class="field"><label>Data da atualização</label><input type="date" id="f-data" value="${new Date().toISOString().slice(0,10)}"></div>
+  `, async () => {
+    const valor = Number(document.getElementById('f-valor').value)||0;
+    const data = document.getElementById('f-data').value;
+    meta.historico = meta.historico || [];
+    meta.historico.push({ data, valor });
+    meta.historico.sort((a,b)=>a.data.localeCompare(b.data));
+    await storageSet('metas', state.metas);
+    await renderMetas();
+    return true;
+  });
+}
+
+/* =========================================================
+   INVESTIMENTOS
+   ========================================================= */
+async function renderInvestimentos(){
+  const content = document.getElementById('content');
+  const totalAtual = state.investimentos.reduce((acc,i)=>{
+    acc[i.ativo] = i;
+    return acc;
+  }, {});
+  const somaAtual = Object.values(totalAtual).reduce((s,i)=>s+(Number(i.valorAtual)||0),0);
+
+  content.innerHTML = `
+    <div class="grid-2">
+      <div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Lançamentos de investimento</h3>
+            <button class="btn small" id="add-inv">+ Lançamento</button>
+          </div>
+          <table>
+            <thead><tr><th>Mês</th><th>Ativo</th><th>Tipo</th><th class="num-col">Aporte</th><th class="num-col">Saldo</th><th></th></tr></thead>
+            <tbody id="tbody-inv"></tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h3>Patrimônio investido</h3></div>
+          <div class="chart-box tall"><canvas id="chart-patrimonio"></canvas></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const sorted = [...state.investimentos].sort((a,b)=> a.data.localeCompare(b.data) || a.ativo.localeCompare(b.ativo));
+  const tb = document.getElementById('tbody-inv');
+  tb.innerHTML = sorted.length ? sorted.map(i=>`
+    <tr class="hoverable">
+      <td>${MESES_ABREV[Number(i.data.split('-')[1])-1]}/${i.data.split('-')[0]}</td>
+      <td>${escapeHtml(i.ativo)}</td>
+      <td><span class="tag">${escapeHtml(i.tipo||'—')}</span></td>
+      <td class="num-col num">${fmtBRL(i.valorAplicado)}</td>
+      <td class="num-col num">${fmtBRL(i.valorAtual)}</td>
+      <td><div class="row-actions"><button class="icon-btn" data-edit-inv="${i.id}">✎</button><button class="icon-btn danger" data-del-inv="${i.id}">✕</button></div></td>
+    </tr>`).join('') : `<tr><td colspan="6" style="color:var(--muted);">Nenhum investimento cadastrado ainda.</td></tr>`;
+
+  document.getElementById('add-inv').onclick = () => openInvestimentoModal(null);
+  tb.querySelectorAll('[data-edit-inv]').forEach(b=>b.onclick=()=>openInvestimentoModal(b.dataset.editInv));
+  tb.querySelectorAll('[data-del-inv]').forEach(b=>b.onclick=async()=>{
+    state.investimentos = state.investimentos.filter(i=>i.id!==b.dataset.delInv);
+    await storageSet('investimentos', state.investimentos);
+    await renderInvestimentos();
+  });
+
+  // evolução do patrimônio total por mês (soma dos valorAtual mais recentes por ativo até cada mês)
+  const mesesSet = [...new Set(state.investimentos.map(i=>i.data))].sort();
+  const ativos = [...new Set(state.investimentos.map(i=>i.ativo))];
+  const totaisPorMes = mesesSet.map(mes => {
+    let total = 0;
+    ativos.forEach(a => {
+      const registros = state.investimentos.filter(i=>i.ativo===a && i.data<=mes).sort((x,y)=>x.data.localeCompare(y.data));
+      if(registros.length) total += Number(registros[registros.length-1].valorAtual)||0;
+    });
+    return total;
+  });
+
+  destroyChart('chart-patrimonio');
+  state.chartInstances['chart-patrimonio'] = new Chart(document.getElementById('chart-patrimonio'), {
+    type:'line',
+    data:{ labels: mesesSet.map(m=>MESES_ABREV[Number(m.split('-')[1])-1]+'/'+m.split('-')[0].slice(2)), datasets:[
+      { label:'Patrimônio total', data: totaisPorMes, borderColor:'#4FA98F', backgroundColor:'rgba(79,169,143,0.12)', fill:true, tension:.25 }
+    ]},
+    options: chartOptionsLine(),
+  });
+}
+
+function openInvestimentoModal(id){
+  const existing = id ? state.investimentos.find(i=>i.id===id) : null;
+  openModal(existing?'Editar lançamento':'Novo lançamento de investimento', `
+    <div class="field-row">
+      <div class="field"><label>Mês</label><input type="month" id="f-mes" value="${existing?existing.data:state.mesAtual}"></div>
+      <div class="field"><label>Tipo</label>
+        <select id="f-tipo">
+          ${['Renda Fixa','Renda Variável','Fundo','Previdência Privada','Reserva de emergência','Outro'].map(t=>`<option ${existing&&existing.tipo===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Ativo / Instituição</label><input type="text" id="f-ativo" value="${existing?escapeAttr(existing.ativo):''}" placeholder="Ex.: TD Selic - Inter"></div>
+    <div class="field-row">
+      <div class="field"><label>Aporte no mês (R$)</label><input type="number" step="0.01" id="f-aporte" value="${existing?existing.valorAplicado:0}"></div>
+      <div class="field"><label>Saldo total no mês (R$)</label><input type="number" step="0.01" id="f-saldo" value="${existing?existing.valorAtual:0}"></div>
+    </div>
+  `, async () => {
+    const data = document.getElementById('f-mes').value;
+    const ativo = document.getElementById('f-ativo').value.trim();
+    const tipo = document.getElementById('f-tipo').value;
+    const valorAplicado = Number(document.getElementById('f-aporte').value)||0;
+    const valorAtual = Number(document.getElementById('f-saldo').value)||0;
+    if(!data || !ativo) return false;
+    if(existing){ Object.assign(existing, {data, ativo, tipo, valorAplicado, valorAtual}); }
+    else state.investimentos.push({ id:cid(), data, ativo, tipo, valorAplicado, valorAtual });
+    await storageSet('investimentos', state.investimentos);
+    await renderInvestimentos();
+    return true;
+  }, existing ? { onDelete: async () => { state.investimentos = state.investimentos.filter(i=>i.id!==id); await storageSet('investimentos', state.investimentos); await renderInvestimentos(); } } : null);
+}
+
+/* =========================================================
+   ASSISTENTE IA (Gemini)
+   ========================================================= */
+async function renderAssistente(){
+  const content = document.getElementById('content');
+  content.innerHTML = `
+    <div class="chat-wrap">
+      <div class="config-strip">
+        <div class="field">
+          <label>Chave de API do Gemini</label>
+          <input type="password" id="f-apikey" value="${escapeAttr(state.config.geminiApiKey||'')}" placeholder="Cole sua chave aqui">
+        </div>
+        <div class="field">
+          <label>Modelo</label>
+          <input type="text" id="f-model" value="${escapeAttr(state.config.geminiModel||'gemini-3.1-pro')}" placeholder="ex.: gemini-3.1-pro">
+        </div>
+        <button class="btn small secondary" id="save-config" style="align-self:flex-end;">Salvar</button>
+      </div>
+      <div class="chat-log" id="chat-log"></div>
+      <div class="chat-input-row">
+        <textarea id="chat-input" placeholder="Pergunte sobre seu orçamento, metas ou investimentos…"></textarea>
+        <button class="btn" id="chat-send">Enviar</button>
+      </div>
+    </div>
+    <div class="section-sub" style="margin-top:10px;">A chave fica salva apenas no seu navegador e é enviada diretamente à API do Google — nunca passa por nós. Os nomes de modelo do Gemini 3 mudam com frequência; confira o atual em <a href="https://ai.google.dev/gemini-api/docs/models" target="_blank" rel="noopener">ai.google.dev/gemini-api/docs/models</a> se receber erro de "modelo não encontrado".</div>
+  `;
+
+  document.getElementById('save-config').onclick = async () => {
+    state.config.geminiApiKey = document.getElementById('f-apikey').value.trim();
+    state.config.geminiModel = document.getElementById('f-model').value.trim() || 'gemini-3.1-pro';
+    await storageSet('config', state.config);
+  };
+
+  renderChatLog();
+  document.getElementById('chat-send').onclick = sendChatMessage;
+  document.getElementById('chat-input').addEventListener('keydown', (e) => {
+    if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChatMessage(); }
+  });
+}
+
+function renderChatLog(){
+  const log = document.getElementById('chat-log');
+  if(!log) return;
+  if(!state.chatMessages.length){
+    log.innerHTML = `<div class="msg system-note">Converse sobre seus dados financeiros — orçamento do mês, metas e investimentos já ficam disponíveis para o assistente.</div>`;
+  } else {
+    log.innerHTML = state.chatMessages.map(m=>`<div class="msg ${m.role==='user'?'user':'model'}">${escapeHtml(m.text)}</div>`).join('');
+  }
+  log.scrollTop = log.scrollHeight;
+}
+
+async function buildContextoFinanceiro(){
+  const resumo = await computeResumoMes(state.mesAtual);
+  const linhasGrupos = state.grupos.map(g=>{
+    const r = resumo.porGrupo[g.id]||{planejado:0,realizado:0};
+    return `- ${g.nome}: ideal ${fmtPct(g.idealPercentual)} da receita | planejado ${fmtBRL(r.planejado)} | realizado ${fmtBRL(r.realizado)}`;
+  }).join('\n');
+  const linhasMetas = state.metas.map(m=>{
+    const hist = m.historico||[];
+    const atual = hist.length?hist[hist.length-1].valor:0;
+    return `- ${m.nome}: alvo ${fmtBRL(m.valorAlvo)} até ${fmtDate(m.dataAlvo)} | atual ${fmtBRL(atual)}`;
+  }).join('\n') || '(nenhuma meta cadastrada)';
+  const invRecentes = [...state.investimentos].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,8)
+    .map(i=>`- ${i.data} ${i.ativo} (${i.tipo}): saldo ${fmtBRL(i.valorAtual)}, aporte ${fmtBRL(i.valorAplicado)}`).join('\n') || '(nenhum investimento cadastrado)';
+
+  return `Você é um assistente financeiro pessoal que conversa em português do Brasil sobre os dados do usuário. Seja direto, prático e cite números quando fizer sentido. Não invente dados que não estão aqui.
+
+Mês de referência: ${monthLabel(state.mesAtual)}
+Receita total: ${fmtBRL(resumo.receita)}
+Despesa total: ${fmtBRL(resumo.despesa)}
+Saldo: ${fmtBRL(resumo.saldo)}
+
+Alocação por grupo (ideal vs realizado):
+${linhasGrupos}
+
+Metas financeiras:
+${linhasMetas}
+
+Investimentos recentes:
+${invRecentes}`;
+}
+
+async function sendChatMessage(){
+  const input = document.getElementById('chat-input');
+  const texto = input.value.trim();
+  if(!texto) return;
+  if(!state.config.geminiApiKey){
+    state.chatMessages.push({ role:'model', text:'Adicione sua chave de API do Gemini acima para começar a conversar.', ts:Date.now() });
+    renderChatLog();
+    return;
+  }
+  input.value='';
+  state.chatMessages.push({ role:'user', text:texto, ts:Date.now() });
+  renderChatLog();
+  await storageSet('chat:mensagens', state.chatMessages.slice(-40));
+
+  const log = document.getElementById('chat-log');
+  const loadingEl = document.createElement('div');
+  loadingEl.className = 'msg model typing-dots';
+  loadingEl.innerHTML = '<span></span><span></span><span></span>';
+  log.appendChild(loadingEl);
+  log.scrollTop = log.scrollHeight;
+
+  try{
+    const systemText = await buildContextoFinanceiro();
+    const contents = state.chatMessages.slice(-16).map(m => ({ role: m.role==='user'?'user':'model', parts:[{text:m.text}] }));
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(state.config.geminiModel)}:generateContent`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-goog-api-key': state.config.geminiApiKey },
+      body: JSON.stringify({ systemInstruction:{ parts:[{text:systemText}] }, contents })
+    });
+    const data = await resp.json();
+    loadingEl.remove();
+    if(!resp.ok){
+      const msg = data?.error?.message || `Erro HTTP ${resp.status}`;
+      state.chatMessages.push({ role:'model', text:`Não consegui obter resposta do Gemini: ${msg}`, ts:Date.now() });
+    } else {
+      const texto = data?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('') || 'Não recebi texto na resposta.';
+      state.chatMessages.push({ role:'model', text:texto, ts:Date.now() });
+    }
+  } catch(err){
+    loadingEl.remove();
+    state.chatMessages.push({ role:'model', text:`Falha ao chamar a API do Gemini: ${err.message}`, ts:Date.now() });
+  }
+  await storageSet('chat:mensagens', state.chatMessages.slice(-40));
+  renderChatLog();
+}
+
+/* =========================================================
+   MODAL GENÉRICO
+   ========================================================= */
+function openModal(title, bodyHtml, onSave, extra){
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `
+    <div class="overlay" id="modal-overlay">
+      <div class="modal">
+        <h3>${title}</h3>
+        <div id="modal-body">${bodyHtml}</div>
+        <div class="modal-actions">
+          ${extra && extra.onDelete ? '<button class="btn secondary" id="modal-delete" style="margin-right:auto; color:var(--red); border-color:var(--red);">Excluir</button>' : ''}
+          <button class="btn secondary" id="modal-cancel">Cancelar</button>
+          <button class="btn" id="modal-save">Salvar</button>
+        </div>
+      </div>
+    </div>`;
+  const close = () => { root.innerHTML=''; };
+  document.getElementById('modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='modal-overlay') close(); });
+  document.getElementById('modal-cancel').onclick = close;
+  document.getElementById('modal-save').onclick = async () => { const ok = await onSave(); if(ok!==false) close(); };
+  if(extra && extra.onDelete){
+    document.getElementById('modal-delete').onclick = async () => { await extra.onDelete(); close(); };
+  }
+}
+
+/* =========================================================
+   UTIL
+   ========================================================= */
+function escapeHtml(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+
+init();
+</script>
+</body>
+</html>
