@@ -313,22 +313,30 @@ function monthsBetween(fromKey, toDateStr){
 /* =========================================================
    STORAGE
    ========================================================= */
-async function storageGet(key, fallback, shared=false){
+const LR_NS = 'livroRazao:';
+async function storageGet(key, fallback){
   try{
-    const r = await window.storage.get(key, shared);
-    return r ? JSON.parse(r.value) : fallback;
+    const raw = localStorage.getItem(LR_NS+key);
+    return raw!==null ? JSON.parse(raw) : fallback;
   }catch(e){ return fallback; }
 }
-async function storageSet(key, value, shared=false){
+async function storageSet(key, value){
   try{
-    const r = await window.storage.set(key, JSON.stringify(value), shared);
-    return !!r;
+    localStorage.setItem(LR_NS+key, JSON.stringify(value));
+    return true;
   }catch(e){ console.error('Falha ao salvar', key, e); return false; }
 }
-async function storageList(prefix, shared=false){
+async function storageList(prefix){
   try{
-    const r = await window.storage.list(prefix, shared);
-    return r ? r.keys : [];
+    const keys = [];
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if(k && k.indexOf(LR_NS)===0){
+        const bare = k.slice(LR_NS.length);
+        if(bare.indexOf(prefix)===0) keys.push(bare);
+      }
+    }
+    return keys;
   }catch(e){ return []; }
 }
 
@@ -390,6 +398,7 @@ const NAV_ITEMS = [
   { id:'metas', label:'Metas', icon:'M12 2v6M12 2 8 6M12 2l4 4M4 14a8 8 0 1 0 16 0 8 8 0 0 0-16 0Zm8-3v3l2 2' },
   { id:'investimentos', label:'Investimentos', icon:'M4 18 9 11l4 4 7-9M17 6h4v4' },
   { id:'assistente', label:'Assistente IA', icon:'M12 3a6 6 0 0 0-6 6v3l-2 4h16l-2-4V9a6 6 0 0 0-6-6ZM9 20a3 3 0 0 0 6 0' },
+  { id:'backup', label:'Backup', icon:'M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2' },
 ];
 function renderNav(){
   const nav = document.getElementById('nav');
@@ -403,7 +412,7 @@ function renderNav(){
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${it.icon}"/></svg>
         <span class="label">${it.label}</span>
       </div>`).join('')}
-    <div class="nav-foot">Dados salvos apenas<br>na sua conta.</div>
+    <div class="nav-foot">Dados salvos apenas<br>neste navegador.</div>
   `;
   nav.querySelectorAll('.nav-item').forEach(el => {
     el.addEventListener('click', async () => {
@@ -463,6 +472,7 @@ async function renderAll(){
   else if(state.abaAtual==='metas') await renderMetas();
   else if(state.abaAtual==='investimentos') await renderInvestimentos();
   else if(state.abaAtual==='assistente') await renderAssistente();
+  else if(state.abaAtual==='backup') await renderBackup();
 }
 
 /* =========================================================
@@ -1208,6 +1218,115 @@ async function sendChatMessage(){
   }
   await storageSet('chat:mensagens', state.chatMessages.slice(-40));
   renderChatLog();
+}
+
+/* =========================================================
+   BACKUP (EXPORTAR / IMPORTAR)
+   ========================================================= */
+async function coletarTodosDados(){
+  const mesesKeys = await storageList('orcamento:');
+  const orcamentos = {};
+  for(const k of mesesKeys){
+    orcamentos[k.replace('orcamento:','')] = await storageGet(k, null);
+  }
+  return {
+    app: 'livro-razao',
+    versao: 1,
+    exportadoEm: new Date().toISOString(),
+    grupos: state.grupos,
+    categorias: state.categorias,
+    metas: state.metas,
+    investimentos: state.investimentos,
+    orcamentos,
+    config: { geminiModel: state.config.geminiModel || '' } // chave de API não é exportada, por segurança
+  };
+}
+
+async function exportarDados(){
+  const dados = await coletarTodosDados();
+  const blob = new Blob([JSON.stringify(dados, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const hoje = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `livro-razao-backup-${hoje}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function importarDados(file){
+  const texto = await file.text();
+  let dados;
+  try{ dados = JSON.parse(texto); }
+  catch(e){ throw new Error('Arquivo inválido: não é um JSON válido.'); }
+  if(!dados || typeof dados !== 'object') throw new Error('Arquivo inválido.');
+
+  if(Array.isArray(dados.grupos) && dados.grupos.length){ state.grupos = dados.grupos; await storageSet('grupos', state.grupos); }
+  if(Array.isArray(dados.categorias) && dados.categorias.length){ state.categorias = dados.categorias; await storageSet('categorias', state.categorias); }
+  if(Array.isArray(dados.metas)){ state.metas = dados.metas; await storageSet('metas', state.metas); }
+  if(Array.isArray(dados.investimentos)){ state.investimentos = dados.investimentos; await storageSet('investimentos', state.investimentos); }
+
+  if(dados.orcamentos && typeof dados.orcamentos === 'object'){
+    state.orcamentoCache = {};
+    state.mesesDisponiveis = [];
+    for(const mesKey of Object.keys(dados.orcamentos)){
+      await storageSet('orcamento:'+mesKey, dados.orcamentos[mesKey]);
+      state.orcamentoCache[mesKey] = dados.orcamentos[mesKey];
+      state.mesesDisponiveis.push(mesKey);
+    }
+    state.mesesDisponiveis.sort();
+  }
+
+  if(dados.config && dados.config.geminiModel){
+    state.config.geminiModel = dados.config.geminiModel;
+    await storageSet('config', state.config);
+  }
+
+  await getOrcamentoMes(state.mesAtual);
+}
+
+async function renderBackup(){
+  const content = document.getElementById('content');
+  content.innerHTML = `
+    <h2 class="section-title">Backup e transferência de dados</h2>
+    <div class="section-sub">Este app roda direto no navegador (inclusive quando publicado como página estática, por exemplo no GitHub Pages). Os dados ficam salvos apenas neste navegador/computador, via armazenamento local. Use os botões abaixo para gerar um arquivo de backup ou para restaurar dados em outro navegador ou dispositivo.</div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>Exportar dados</h3></div>
+      <p class="section-sub" style="margin-top:0;">Gera um arquivo <span class="mono">.json</span> com grupos, categorias, orçamentos de todos os meses, metas e investimentos. A chave de API do Gemini não é incluída, por segurança.</p>
+      <button class="btn" id="btn-exportar">Baixar backup (.json)</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>Importar dados</h3></div>
+      <p class="section-sub" style="margin-top:0;">Restaura dados a partir de um arquivo de backup exportado por este mesmo app. Isso substitui os dados atualmente salvos neste navegador.</p>
+      <input type="file" id="input-importar" accept="application/json" style="margin-bottom:12px; display:block; color:var(--muted); font-size:12.5px;">
+      <button class="btn secondary" id="btn-importar">Restaurar backup</button>
+      <div id="importar-status" class="section-sub" style="margin-top:10px; margin-bottom:0;"></div>
+    </div>
+  `;
+
+  document.getElementById('btn-exportar').onclick = exportarDados;
+  document.getElementById('btn-importar').onclick = async () => {
+    const inp = document.getElementById('input-importar');
+    const status = document.getElementById('importar-status');
+    const file = inp.files && inp.files[0];
+    if(!file){ status.textContent = 'Selecione um arquivo antes de importar.'; status.style.color = 'var(--red)'; return; }
+    if(!confirm('Isso vai substituir os dados salvos neste navegador pelos dados do arquivo selecionado. Deseja continuar?')) return;
+    try{
+      await importarDados(file);
+      status.textContent = 'Dados importados com sucesso!';
+      status.style.color = 'var(--green)';
+      state.abaAtual = 'dashboard';
+      renderNav();
+      await renderAll();
+    }catch(e){
+      status.textContent = e.message || 'Erro ao importar arquivo.';
+      status.style.color = 'var(--red)';
+    }
+  };
 }
 
 /* =========================================================
