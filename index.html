@@ -708,7 +708,7 @@ async function renderOrcamento(){
           </div>
           <div class="section-sub">O percentual ideal é aplicado sobre a receita do mês para calcular as oportunidades no dashboard.</div>
           <table>
-            <thead><tr><th>Grupo</th><th class="num-col">% ideal</th><th></th></tr></thead>
+            <thead><tr><th>Grupo</th><th class="num-col">% ideal</th><th class="num-col">Valor ideal</th><th></th></tr></thead>
             <tbody id="tbody-grupos"></tbody>
           </table>
           <div id="soma-ideal" style="margin-top:8px; font-size:11.5px; color:var(--muted);"></div>
@@ -750,6 +750,7 @@ async function renderOrcamento(){
     <tr class="hoverable">
       <td>${escapeHtml(g.nome)}</td>
       <td class="num-col"><input type="number" step="0.5" min="0" max="100" value="${(g.idealPercentual*100).toFixed(1)}" data-grupo-pct="${g.id}" style="width:64px; background:var(--bg); border:1px solid var(--line); color:var(--ink); border-radius:3px; padding:4px 6px; text-align:right;">%</td>
+      <td class="num-col num">${totalReceita>0 ? fmtBRL(totalReceita*g.idealPercentual) : '—'}</td>
       <td></td>
     </tr>`).join('');
   const somaIdeal = state.grupos.reduce((s,g)=>s+g.idealPercentual,0);
