@@ -666,7 +666,7 @@ async function computeInsights(mesKey, resumo){
 
   const hoje = new Date().toISOString().slice(0,10);
   state.metas.forEach(m => {
-    const hist = m.historico||[];
+    const hist = computeHistoricoMeta(m);
     if(hist.length<2) return;
     const primeiro = hist[0], ultimo = hist[hist.length-1];
     const mesesDecorridos = Math.max(1, monthsBetween(primeiro.data.slice(0,7), ultimo.data));
@@ -959,6 +959,33 @@ function openCategoriaModal(id){
 /* =========================================================
    METAS
    ========================================================= */
+function investimentosDaMeta(meta){
+  return state.investimentos.filter(i => i.metaId === meta.id);
+}
+
+/* Quando a meta tem investimentos vinculados, o histórico (e portanto o
+   valor atual e o ritmo) é calculado automaticamente a partir deles —
+   soma, mês a mês, o saldo mais recente de cada ativo vinculado.
+   Sem vínculo, mantém o histórico de atualizações manuais. */
+function computeHistoricoMeta(meta){
+  const vinculados = investimentosDaMeta(meta);
+  if(!vinculados.length) return meta.historico || [];
+  const meses = [...new Set(vinculados.map(i=>i.data))].sort();
+  const ativos = [...new Set(vinculados.map(i=>i.ativo))];
+  return meses.map(mes => {
+    let total = 0;
+    ativos.forEach(a => {
+      const registros = vinculados.filter(i=>i.ativo===a && i.data<=mes).sort((x,y)=>x.data.localeCompare(y.data));
+      if(registros.length) total += Number(registros[registros.length-1].valorAtual)||0;
+    });
+    return { data: mes+'-01', valor: total };
+  });
+}
+function computeValorAtualMeta(meta){
+  const hist = computeHistoricoMeta(meta);
+  return hist.length ? hist[hist.length-1].valor : 0;
+}
+
 async function renderMetas(){
   const content = document.getElementById('content');
   content.innerHTML = `
@@ -978,7 +1005,9 @@ async function renderMetas(){
 
   const hoje = new Date().toISOString().slice(0,10);
   list.innerHTML = state.metas.map(m => {
-    const hist = m.historico||[];
+    const vinculados = investimentosDaMeta(m);
+    const ativosNomes = [...new Set(vinculados.map(i=>i.ativo))];
+    const hist = computeHistoricoMeta(m);
     const valorAtual = hist.length ? hist[hist.length-1].valor : 0;
     const progresso = m.valorAlvo>0 ? Math.min(1, valorAtual/m.valorAlvo) : 0;
     const mesesRestantes = monthsBetween(state.mesAtual, m.dataAlvo);
@@ -995,7 +1024,7 @@ async function renderMetas(){
       else if(ritmoAtual < ritmoNecessario*0.9){ ritmoStatus = `Ritmo atual ${fmtBRL(ritmoAtual)}/mês; seriam necessários ${fmtBRL(ritmoNecessario)}/mês.`; barClass='risk'; }
       else { ritmoStatus = `No ritmo — ${fmtBRL(ritmoAtual)}/mês.`; }
     } else {
-      ritmoStatus = 'Atualize o valor atual ao longo dos meses para acompanhar o ritmo.';
+      ritmoStatus = vinculados.length ? 'Aguardando mais lançamentos de investimento vinculados para calcular o ritmo.' : 'Atualize o valor atual ao longo dos meses para acompanhar o ritmo.';
     }
     return `
       <div class="goal-card">
@@ -1008,8 +1037,9 @@ async function renderMetas(){
           <span><span class="val num">${fmtBRL(valorAtual)}</span> de <span class="val num">${fmtBRL(m.valorAlvo)}</span> (${fmtPct(progresso)})</span>
           <span>${ritmoStatus}</span>
         </div>
+        ${ativosNomes.length ? `<div style="margin-top:9px; font-size:11.5px; color:var(--muted);">Atualizado automaticamente por: ${ativosNomes.map(a=>`<span class="tag" style="margin-right:4px;">${escapeHtml(a)}</span>`).join('')}</div>` : ''}
         <div class="row-actions" style="opacity:1; margin-top:10px; justify-content:flex-end;">
-          <button class="btn small secondary" data-update-meta="${m.id}">Atualizar valor</button>
+          ${vinculados.length ? '' : `<button class="btn small secondary" data-update-meta="${m.id}">Atualizar valor</button>`}
           <button class="icon-btn" data-edit-meta="${m.id}">✎</button>
           <button class="icon-btn danger" data-del-meta="${m.id}">✕</button>
         </div>
@@ -1089,7 +1119,7 @@ async function renderInvestimentos(){
             <button class="btn small" id="add-inv">+ Lançamento</button>
           </div>
           <table>
-            <thead><tr><th>Mês</th><th>Ativo</th><th>Tipo</th><th class="num-col">Aporte</th><th class="num-col">Saldo</th><th></th></tr></thead>
+            <thead><tr><th>Mês</th><th>Ativo</th><th>Tipo</th><th>Meta</th><th class="num-col">Aporte</th><th class="num-col">Saldo</th><th></th></tr></thead>
             <tbody id="tbody-inv"></tbody>
           </table>
         </div>
@@ -1105,15 +1135,18 @@ async function renderInvestimentos(){
 
   const sorted = [...state.investimentos].sort((a,b)=> a.data.localeCompare(b.data) || a.ativo.localeCompare(b.ativo));
   const tb = document.getElementById('tbody-inv');
-  tb.innerHTML = sorted.length ? sorted.map(i=>`
-    <tr class="hoverable">
+  tb.innerHTML = sorted.length ? sorted.map(i=>{
+    const meta = i.metaId ? state.metas.find(m=>m.id===i.metaId) : null;
+    return `<tr class="hoverable">
       <td>${MESES_ABREV[Number(i.data.split('-')[1])-1]}/${i.data.split('-')[0]}</td>
       <td>${escapeHtml(i.ativo)}</td>
       <td><span class="tag">${escapeHtml(i.tipo||'—')}</span></td>
+      <td>${meta ? `<span class="tag">${escapeHtml(meta.nome)}</span>` : '—'}</td>
       <td class="num-col num">${fmtBRL(i.valorAplicado)}</td>
       <td class="num-col num">${fmtBRL(i.valorAtual)}</td>
       <td><div class="row-actions"><button class="icon-btn" data-edit-inv="${i.id}">✎</button><button class="icon-btn danger" data-del-inv="${i.id}">✕</button></div></td>
-    </tr>`).join('') : `<tr><td colspan="6" style="color:var(--muted);">Nenhum investimento cadastrado ainda.</td></tr>`;
+    </tr>`;
+  }).join('') : `<tr><td colspan="7" style="color:var(--muted);">Nenhum investimento cadastrado ainda.</td></tr>`;
 
   document.getElementById('add-inv').onclick = () => openInvestimentoModal(null);
   tb.querySelectorAll('[data-edit-inv]').forEach(b=>b.onclick=()=>openInvestimentoModal(b.dataset.editInv));
@@ -1157,6 +1190,12 @@ function openInvestimentoModal(id){
       </div>
     </div>
     <div class="field"><label>Ativo / Instituição</label><input type="text" id="f-ativo" value="${existing?escapeAttr(existing.ativo):''}" placeholder="Ex.: TD Selic - Inter"></div>
+    <div class="field"><label>Vincular à meta (opcional)</label>
+      <select id="f-meta">
+        <option value="">Nenhuma — controle manual</option>
+        ${state.metas.map(m=>`<option value="${m.id}" ${existing&&existing.metaId===m.id?'selected':''}>${escapeHtml(m.nome)}</option>`).join('')}
+      </select>
+    </div>
     <div class="field-row">
       <div class="field"><label>Aporte no mês (R$)</label><input type="number" step="0.01" id="f-aporte" value="${existing?existing.valorAplicado:0}"></div>
       <div class="field"><label>Saldo total no mês (R$)</label><input type="number" step="0.01" id="f-saldo" value="${existing?existing.valorAtual:0}"></div>
@@ -1165,11 +1204,12 @@ function openInvestimentoModal(id){
     const data = document.getElementById('f-mes').value;
     const ativo = document.getElementById('f-ativo').value.trim();
     const tipo = document.getElementById('f-tipo').value;
+    const metaId = document.getElementById('f-meta').value || null;
     const valorAplicado = Number(document.getElementById('f-aporte').value)||0;
     const valorAtual = Number(document.getElementById('f-saldo').value)||0;
     if(!data || !ativo) return false;
-    if(existing){ Object.assign(existing, {data, ativo, tipo, valorAplicado, valorAtual}); }
-    else state.investimentos.push({ id:cid(), data, ativo, tipo, valorAplicado, valorAtual });
+    if(existing){ Object.assign(existing, {data, ativo, tipo, valorAplicado, valorAtual, metaId}); }
+    else state.investimentos.push({ id:cid(), data, ativo, tipo, valorAplicado, valorAtual, metaId });
     await storageSet('investimentos', state.investimentos);
     await renderInvestimentos();
     return true;
