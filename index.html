@@ -101,7 +101,7 @@
   .month-picker button:hover{ border-color:var(--teal); color:var(--teal); }
   .month-label{ font-family:'Fraunces', serif; font-size:20px; font-weight:500; text-transform:capitalize; min-width:150px; text-align:center; }
 
-  .kpi-row{ display:flex; gap:34px; }
+  .kpi-row{ display:flex; gap:28px; flex-wrap:wrap; justify-content:flex-end; }
   .kpi{ text-align:right; }
   .kpi .kpi-label{ color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:3px; }
   .kpi .kpi-value{ font-size:22px; font-weight:500; }
@@ -481,20 +481,21 @@ function renderNav(){
    ========================================================= */
 async function computeResumoMes(mesKey){
   const orc = await getOrcamentoMes(mesKey);
-  if(!orc) return { receita:0, despesa:0, saldo:0, porGrupo:{}, temDados:false };
+  if(!orc) return { receita:0, despesa:0, saldo:0, despesaProjetada:0, saldoProjetado:0, porGrupo:{}, temDados:false };
   const receita = orc.receitas.reduce((s,r)=>s+(Number(r.valor)||0),0);
   const porGrupo = {};
   state.grupos.forEach(g => porGrupo[g.id] = { planejado:0, realizado:0 });
-  let despesaTotal = 0;
+  let despesaTotal = 0, despesaProjetada = 0;
   orc.despesas.forEach(d => {
     const cat = state.categorias.find(c=>c.id===d.categoriaId);
     const gId = cat ? cat.grupoId : null;
     const realizado = Number(d.realizado)||0;
     const planejado = Number(d.planejado)||0;
     despesaTotal += realizado;
+    despesaProjetada += Math.max(planejado, realizado); // usa o realizado quando já superou o planejado
     if(gId && porGrupo[gId]){ porGrupo[gId].planejado += planejado; porGrupo[gId].realizado += realizado; }
   });
-  return { receita, despesa:despesaTotal, saldo:receita-despesaTotal, porGrupo, temDados:true, orc };
+  return { receita, despesa:despesaTotal, saldo:receita-despesaTotal, despesaProjetada, saldoProjetado:receita-despesaProjetada, porGrupo, temDados:true, orc };
 }
 
 async function renderStatementHeader(){
@@ -510,6 +511,7 @@ async function renderStatementHeader(){
       <div class="kpi"><div class="kpi-label">Receita</div><div class="kpi-value num">${fmtBRL(resumo.receita)}</div></div>
       <div class="kpi"><div class="kpi-label">Despesa</div><div class="kpi-value num">${fmtBRL(resumo.despesa)}</div></div>
       <div class="kpi ${resumo.saldo>=0?'positive':'negative'}"><div class="kpi-label">Saldo</div><div class="kpi-value num">${fmtBRL(resumo.saldo)}</div></div>
+      <div class="kpi ${resumo.saldoProjetado>=0?'positive':'negative'}" title="Receita menos o maior valor entre planejado e realizado em cada lançamento — o resultado esperado se o orçamento planejado for cumprido."><div class="kpi-label">Saldo projetado</div><div class="kpi-value num">${fmtBRL(resumo.saldoProjetado)}</div></div>
     </div>
   `;
   document.getElementById('mes-prev').onclick = async () => { state.mesAtual = shiftMonth(state.mesAtual,-1); await getOrcamentoMes(state.mesAtual); await renderAll(); };
